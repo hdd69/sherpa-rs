@@ -15,7 +15,7 @@ pub mod transducer;
 pub mod whisper;
 pub mod zipformer;
 
-mod utils;
+pub mod utils;
 
 #[cfg(feature = "tts")]
 pub mod tts;
