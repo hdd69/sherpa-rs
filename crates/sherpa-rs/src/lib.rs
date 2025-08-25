@@ -12,6 +12,7 @@ pub mod silero_vad;
 pub mod speaker_id;
 pub mod ten_vad;
 pub mod transducer;
+pub mod transducer_online;
 pub mod whisper;
 pub mod zipformer;
 
