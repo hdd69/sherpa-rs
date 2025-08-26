@@ -15,6 +15,7 @@ pub mod transducer;
 pub mod transducer_online;
 pub mod whisper;
 pub mod zipformer;
+pub mod zipformer_online;
 
 pub mod utils;
 
