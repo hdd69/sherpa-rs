@@ -151,6 +151,12 @@ impl ZipFormerOnline {
             sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(self.stream);
         }
     }
+
+    pub fn reset(&mut self) {
+        unsafe {
+            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer, self.stream);
+        }
+    }
 }
 
 unsafe impl Send for ZipFormerOnline {}
