@@ -737,6 +737,7 @@ dependencies = [
  "eyre",
  "hound",
  "sherpa-rs-sys",
+ "thiserror",
  "tracing",
 ]
 
