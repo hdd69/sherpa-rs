@@ -22,6 +22,7 @@ crate-type = ["cdylib", "rlib"]
 eyre = "0.6.12"
 hound = { version = "3.5.1" }
 sherpa-rs-sys = { path = "../sherpa-rs-sys", version = "0.6.6", default-features = false }
+thiserror = "1.0"
 tracing = "0.1.40"
 
 [dev-dependencies]
