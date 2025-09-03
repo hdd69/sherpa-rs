@@ -40,14 +40,11 @@ pub enum StreamingError {
     ConfigError,
 }
 
-#[derive(Debug, Clone)]
-pub struct StreamingState {
-    pub session_active: bool,
-    pub total_samples_processed: usize,
-    pub last_partial_result: String,
-    pub endpoint_detected: bool,
-    pub session_start_time: std::time::Instant,
-}
+// Newtype wrapper for the stream
+#[derive(Debug)] // Optional, for debugging
+pub struct SafeOnlineStream(*const sherpa_rs_sys::SherpaOnnxOnlineStream); // Adjust type path if needed
+
+unsafe impl Send for SafeOnlineStream {} // Now safe to impl here
 
 pub struct ZipFormerOnline {
     recognizer_ptr: *mut sherpa_rs_sys::SherpaOnnxOnlineRecognizer,
@@ -136,26 +133,15 @@ impl ZipFormerOnline {
             return Err(StreamingError::ConfigError);
         }
 
-        let stream = unsafe { sherpa_rs_sys::SherpaOnnxCreateOnlineStream(recognizer) };
-        if stream.is_null() {
-            unsafe { sherpa_rs_sys::SherpaOnnxDestroyOnlineRecognizer(recognizer) };
-            return Err(StreamingError::ConfigError);
-        }
-
         Ok(Self {
             recognizer_ptr: recognizer as *mut _,
         })
     }
 
-    pub fn accept_waveform(
-        &mut self,
-        stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream,
-        sample_rate: u32,
-        samples: &[f32],
-    ) {
+    pub fn accept_waveform(&mut self, stream: SafeOnlineStream, sample_rate: u32, samples: &[f32]) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamAcceptWaveform(
-                stream,
+                stream.0,
                 sample_rate as i32,
                 samples.as_ptr(),
                 samples.len() as i32,
@@ -163,11 +149,11 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn decode(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> String {
+    pub fn decode(&mut self, stream: SafeOnlineStream) -> String {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream);
+            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream.0);
             let result_ptr =
-                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream);
+                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream.0);
             if result_ptr.is_null() {
                 return String::new();
             }
@@ -180,15 +166,15 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn input_finished(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
+    pub fn input_finished(&mut self, stream: SafeOnlineStream) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(stream);
+            sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(stream.0);
         }
     }
 
-    pub fn reset(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
+    pub fn reset(&mut self, stream: SafeOnlineStream) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, stream);
+            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, stream.0);
         }
     }
 
@@ -196,16 +182,16 @@ impl ZipFormerOnline {
 
     /// Check if the streaming recognizer is ready to process audio
     /// This replaces manual chunk size checking with model-driven processing
-    pub fn is_ready(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> bool {
-        unsafe { sherpa_rs_sys::SherpaOnnxIsOnlineStreamReady(self.recognizer_ptr, stream) != 0 }
+    pub fn is_ready(&self, stream: SafeOnlineStream) -> bool {
+        unsafe { sherpa_rs_sys::SherpaOnnxIsOnlineStreamReady(self.recognizer_ptr, stream.0) != 0 }
     }
 
     /// Get current recognition result
     /// Returns empty string if no result available
-    pub fn get_result(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> String {
+    pub fn get_result(&self, stream: SafeOnlineStream) -> String {
         unsafe {
             let result_ptr =
-                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream);
+                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream.0);
             if result_ptr.is_null() {
                 return String::new();
             }
@@ -228,30 +214,33 @@ impl ZipFormerOnline {
     }
 
     /// Check if endpoint (end of utterance) has been detected
-    pub fn is_endpoint(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> bool {
-        unsafe { sherpa_rs_sys::SherpaOnnxOnlineStreamIsEndpoint(self.recognizer_ptr, stream) != 0 }
+    pub fn is_endpoint(&self, stream: SafeOnlineStream) -> bool {
+        unsafe {
+            sherpa_rs_sys::SherpaOnnxOnlineStreamIsEndpoint(self.recognizer_ptr, stream.0) != 0
+        }
     }
 
     /// Decode the current streaming audio
     /// This is called when is_ready() returns true
-    pub fn decode_stream(
-        &mut self,
-        stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream,
-    ) -> Result<(), StreamingError> {
+    pub fn decode_stream(&mut self, stream: SafeOnlineStream) -> Result<(), StreamingError> {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream);
+            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream.0);
 
             Ok(())
         }
     }
 
-    pub fn create_stream(&mut self) -> *const sherpa_rs_sys::SherpaOnnxOnlineStream {
-        unsafe { sherpa_rs_sys::SherpaOnnxCreateOnlineStream(self.recognizer_ptr) }
+    pub fn create_stream(&mut self) -> SafeOnlineStream {
+        unsafe {
+            SafeOnlineStream(sherpa_rs_sys::SherpaOnnxCreateOnlineStream(
+                self.recognizer_ptr,
+            ))
+        }
     }
 
-    pub fn destroy_stream(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
+    pub fn destroy_stream(&mut self, stream: SafeOnlineStream) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(stream);
+            sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(stream.0);
         }
     }
 }
