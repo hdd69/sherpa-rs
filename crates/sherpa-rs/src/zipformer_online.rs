@@ -41,25 +41,6 @@ pub enum StreamingError {
 }
 
 #[derive(Debug, Clone)]
-pub struct StreamingConfig {
-    pub enable_partial_results: bool,
-    pub endpoint_detection_threshold: f32,
-    pub max_streaming_duration_ms: u32,
-    pub reset_on_endpoint: bool,
-}
-
-impl Default for StreamingConfig {
-    fn default() -> Self {
-        Self {
-            enable_partial_results: true,
-            endpoint_detection_threshold: 0.5,
-            max_streaming_duration_ms: 30000, // 30 seconds
-            reset_on_endpoint: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct StreamingState {
     pub session_active: bool,
     pub total_samples_processed: usize,
@@ -70,10 +51,7 @@ pub struct StreamingState {
 
 pub struct ZipFormerOnline {
     recognizer_ptr: *mut sherpa_rs_sys::SherpaOnnxOnlineRecognizer,
-    stream_ptr: *mut sherpa_rs_sys::SherpaOnnxOnlineStream,
-    config: ZipFormerOnlineConfig,
-    streaming_config: StreamingConfig,
-    streaming_state: StreamingState,
+    // stream_ptr: *mut sherpa_rs_sys::SherpaOnnxOnlineStream,
 }
 
 impl ZipFormerOnline {
@@ -92,7 +70,7 @@ impl ZipFormerOnline {
                 .unwrap_or_else(|| "greedy_search".to_string()),
         );
 
-        let transducer_config = unsafe {
+        let transducer_config = {
             sherpa_rs_sys::SherpaOnnxOnlineTransducerModelConfig {
                 encoder: encoder_ptr.as_ptr(),
                 decoder: decoder_ptr.as_ptr(),
@@ -121,7 +99,7 @@ impl ZipFormerOnline {
         };
 
         // Feature config (set defaults if not provided)
-        let feat_config = unsafe {
+        let feat_config = {
             sherpa_rs_sys::SherpaOnnxFeatureConfig {
                 sample_rate: config.sample_rate.unwrap_or(16000),
                 feature_dim: config.feature_dim.unwrap_or(80),
@@ -166,23 +144,18 @@ impl ZipFormerOnline {
 
         Ok(Self {
             recognizer_ptr: recognizer as *mut _,
-            stream_ptr: stream as *mut _,
-            config,
-            streaming_config: StreamingConfig::default(),
-            streaming_state: StreamingState {
-                session_active: false,
-                total_samples_processed: 0,
-                last_partial_result: String::new(),
-                endpoint_detected: false,
-                session_start_time: std::time::Instant::now(),
-            },
         })
     }
 
-    pub fn accept_waveform(&mut self, sample_rate: u32, samples: &[f32]) {
+    pub fn accept_waveform(
+        &mut self,
+        stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream,
+        sample_rate: u32,
+        samples: &[f32],
+    ) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamAcceptWaveform(
-                self.stream_ptr,
+                stream,
                 sample_rate as i32,
                 samples.as_ptr(),
                 samples.len() as i32,
@@ -190,13 +163,11 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn decode(&mut self) -> String {
+    pub fn decode(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> String {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, self.stream_ptr);
-            let result_ptr = sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(
-                self.recognizer_ptr,
-                self.stream_ptr,
-            );
+            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream);
+            let result_ptr =
+                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream);
             if result_ptr.is_null() {
                 return String::new();
             }
@@ -209,15 +180,15 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn input_finished(&mut self) {
+    pub fn input_finished(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(self.stream_ptr);
+            sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(stream);
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, self.stream_ptr);
+            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, stream);
         }
     }
 
@@ -225,20 +196,16 @@ impl ZipFormerOnline {
 
     /// Check if the streaming recognizer is ready to process audio
     /// This replaces manual chunk size checking with model-driven processing
-    pub fn is_ready(&self) -> bool {
-        unsafe {
-            sherpa_rs_sys::SherpaOnnxIsOnlineStreamReady(self.recognizer_ptr, self.stream_ptr) != 0
-        }
+    pub fn is_ready(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> bool {
+        unsafe { sherpa_rs_sys::SherpaOnnxIsOnlineStreamReady(self.recognizer_ptr, stream) != 0 }
     }
 
     /// Get current recognition result
     /// Returns empty string if no result available
-    pub fn get_result(&self) -> String {
+    pub fn get_result(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> String {
         unsafe {
-            let result_ptr = sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(
-                self.recognizer_ptr,
-                self.stream_ptr,
-            );
+            let result_ptr =
+                sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream);
             if result_ptr.is_null() {
                 return String::new();
             }
@@ -261,63 +228,26 @@ impl ZipFormerOnline {
     }
 
     /// Check if endpoint (end of utterance) has been detected
-    pub fn is_endpoint(&self) -> bool {
-        unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamIsEndpoint(self.recognizer_ptr, self.stream_ptr)
-                != 0
-        }
-    }
-
-    /// Reset the streaming session for a new utterance
-    /// This maintains the recognizer but clears streaming state
-    pub fn reset_stream(&mut self) {
-        unsafe {
-            sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, self.stream_ptr);
-        }
-        // Reset our internal streaming state
-        self.streaming_state = StreamingState {
-            session_active: false,
-            total_samples_processed: 0,
-            last_partial_result: String::new(),
-            endpoint_detected: false,
-            session_start_time: std::time::Instant::now(),
-        };
+    pub fn is_endpoint(&self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) -> bool {
+        unsafe { sherpa_rs_sys::SherpaOnnxOnlineStreamIsEndpoint(self.recognizer_ptr, stream) != 0 }
     }
 
     /// Decode the current streaming audio
     /// This is called when is_ready() returns true
-    pub fn decode_stream(&mut self) -> Result<(), StreamingError> {
+    pub fn decode_stream(
+        &mut self,
+        stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream,
+    ) -> Result<(), StreamingError> {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, self.stream_ptr);
+            sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream);
 
             Ok(())
         }
     }
 
-    /// Prepare speech segment with official tail padding pattern
-    /// This replaces manual chunk padding with proper tail padding
-    pub fn prepare_speech_segment(&self, samples: &[f32], sample_rate: u32) -> Vec<f32> {
-        let mut prepared = samples.to_vec();
-
-        // Add tail padding (~0.66 seconds as per official examples)
-        let tail_padding_samples = (0.66 * sample_rate as f32) as usize;
-        let tail_padding = vec![0.0f32; tail_padding_samples];
-        prepared.extend(tail_padding);
-
-        prepared
-    }
-
-    /// Get current streaming state
-    pub fn get_streaming_state(&self) -> &StreamingState {
-        &self.streaming_state
-    }
-
-    /// Update streaming state after processing
-    fn update_streaming_state(&mut self) {
-        self.streaming_state.endpoint_detected = self.is_endpoint();
-        if !self.streaming_state.session_active && !self.get_result().is_empty() {
-            self.streaming_state.session_active = true;
-            self.streaming_state.session_start_time = std::time::Instant::now();
+    pub fn destroy_stream(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
+        unsafe {
+            sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(stream);
         }
     }
 }
@@ -328,7 +258,6 @@ unsafe impl Sync for ZipFormerOnline {}
 impl Drop for ZipFormerOnline {
     fn drop(&mut self) {
         unsafe {
-            sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(self.stream_ptr);
             sherpa_rs_sys::SherpaOnnxDestroyOnlineRecognizer(self.recognizer_ptr);
         }
     }
