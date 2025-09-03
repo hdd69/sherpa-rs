@@ -245,6 +245,10 @@ impl ZipFormerOnline {
         }
     }
 
+    pub fn create_stream(&mut self) -> *const sherpa_rs_sys::SherpaOnnxOnlineStream {
+        unsafe { sherpa_rs_sys::SherpaOnnxCreateOnlineStream(self.recognizer_ptr) }
+    }
+
     pub fn destroy_stream(&mut self, stream: *const sherpa_rs_sys::SherpaOnnxOnlineStream) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(stream);
