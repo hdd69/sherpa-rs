@@ -23,6 +23,12 @@ pub struct ZipFormerOnlineConfig {
 
     // Decoding method (e.g., "greedy_search" for streaming)
     pub decoding_method: Option<String>,
+
+    pub enable_endpoint: Option<i32>,
+    pub rule1_min_trailing_silence: Option<f32>,
+    pub rule2_min_trailing_silence: Option<f32>,
+    pub rule3_min_utterance_length: Option<f32>,
+    pub max_active_paths: Option<i32>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -110,7 +116,7 @@ impl ZipFormerOnline {
                 model_config,
                 decoding_method: decoding_method_ptr.as_ptr(),
                 // Zero other fields (endpoint, hotwords, etc.)
-                enable_endpoint: mem::zeroed(),
+                enable_endpoint: config.enable_endpoint.unwrap_or(mem::zeroed()),
                 hotwords_file: mem::zeroed(),
                 hotwords_score: mem::zeroed(),
                 ctc_fst_decoder_config: mem::zeroed(),
@@ -120,10 +126,16 @@ impl ZipFormerOnline {
                 hotwords_buf: mem::zeroed(),
                 hotwords_buf_size: mem::zeroed(),
                 hr: mem::zeroed(),
-                max_active_paths: mem::zeroed(),
-                rule1_min_trailing_silence: mem::zeroed(),
-                rule2_min_trailing_silence: mem::zeroed(),
-                rule3_min_utterance_length: mem::zeroed(),
+                max_active_paths: config.max_active_paths.unwrap_or(mem::zeroed()),
+                rule1_min_trailing_silence: config
+                    .rule1_min_trailing_silence
+                    .unwrap_or(mem::zeroed()),
+                rule2_min_trailing_silence: config
+                    .rule2_min_trailing_silence
+                    .unwrap_or(mem::zeroed()),
+                rule3_min_utterance_length: config
+                    .rule3_min_utterance_length
+                    .unwrap_or(mem::zeroed()),
             }
         };
 
