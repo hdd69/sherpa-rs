@@ -138,7 +138,12 @@ impl ZipFormerOnline {
         })
     }
 
-    pub fn accept_waveform(&mut self, stream: SafeOnlineStream, sample_rate: u32, samples: &[f32]) {
+    pub fn accept_waveform(
+        &mut self,
+        stream: &SafeOnlineStream,
+        sample_rate: u32,
+        samples: &[f32],
+    ) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamAcceptWaveform(
                 stream.0,
@@ -149,7 +154,7 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn decode(&mut self, stream: SafeOnlineStream) -> String {
+    pub fn decode(&mut self, stream: &SafeOnlineStream) -> String {
         unsafe {
             sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream.0);
             let result_ptr =
@@ -166,13 +171,13 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn input_finished(&mut self, stream: SafeOnlineStream) {
+    pub fn input_finished(&mut self, stream: &SafeOnlineStream) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamInputFinished(stream.0);
         }
     }
 
-    pub fn reset(&mut self, stream: SafeOnlineStream) {
+    pub fn reset(&mut self, stream: &SafeOnlineStream) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamReset(self.recognizer_ptr, stream.0);
         }
@@ -182,13 +187,13 @@ impl ZipFormerOnline {
 
     /// Check if the streaming recognizer is ready to process audio
     /// This replaces manual chunk size checking with model-driven processing
-    pub fn is_ready(&self, stream: SafeOnlineStream) -> bool {
+    pub fn is_ready(&self, stream: &SafeOnlineStream) -> bool {
         unsafe { sherpa_rs_sys::SherpaOnnxIsOnlineStreamReady(self.recognizer_ptr, stream.0) != 0 }
     }
 
     /// Get current recognition result
     /// Returns empty string if no result available
-    pub fn get_result(&self, stream: SafeOnlineStream) -> String {
+    pub fn get_result(&self, stream: &SafeOnlineStream) -> String {
         unsafe {
             let result_ptr =
                 sherpa_rs_sys::SherpaOnnxGetOnlineStreamResult(self.recognizer_ptr, stream.0);
@@ -214,7 +219,7 @@ impl ZipFormerOnline {
     }
 
     /// Check if endpoint (end of utterance) has been detected
-    pub fn is_endpoint(&self, stream: SafeOnlineStream) -> bool {
+    pub fn is_endpoint(&self, stream: &SafeOnlineStream) -> bool {
         unsafe {
             sherpa_rs_sys::SherpaOnnxOnlineStreamIsEndpoint(self.recognizer_ptr, stream.0) != 0
         }
@@ -222,7 +227,7 @@ impl ZipFormerOnline {
 
     /// Decode the current streaming audio
     /// This is called when is_ready() returns true
-    pub fn decode_stream(&mut self, stream: SafeOnlineStream) -> Result<(), StreamingError> {
+    pub fn decode_stream(&mut self, stream: &SafeOnlineStream) -> Result<(), StreamingError> {
         unsafe {
             sherpa_rs_sys::SherpaOnnxDecodeOnlineStream(self.recognizer_ptr, stream.0);
 
@@ -238,7 +243,7 @@ impl ZipFormerOnline {
         }
     }
 
-    pub fn destroy_stream(&mut self, stream: SafeOnlineStream) {
+    pub fn destroy_stream(&mut self, stream: &SafeOnlineStream) {
         unsafe {
             sherpa_rs_sys::SherpaOnnxDestroyOnlineStream(stream.0);
         }
