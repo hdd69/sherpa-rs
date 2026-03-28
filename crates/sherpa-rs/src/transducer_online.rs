@@ -99,7 +99,7 @@ impl OnlineTransducerRecognizer {
                 paraformer: mem::zeroed::<_>(),
                 nemo_ctc: mem::zeroed::<_>(),
                 zipformer2_ctc: mem::zeroed::<_>(),
-                // Add any other unused fields as zeroed if present in bindings
+                ..mem::zeroed::<_>()
             };
 
             let recognizer_config = sherpa_rs_sys::SherpaOnnxOnlineRecognizerConfig {
@@ -107,7 +107,7 @@ impl OnlineTransducerRecognizer {
                     sample_rate: config.sample_rate,
                     feature_dim: config.feature_dim,
                     // Other feat fields default to zeroed or standard (e.g., low_freq=20, high_freq=-400 for Parakeet)
-                    ..unsafe { mem::zeroed() } // Or set explicitly if needed
+                    ..mem::zeroed()
                 },
                 model_config: online_model_config,
                 decoding_method: decoding_method.as_ptr(),
@@ -140,7 +140,7 @@ impl OnlineTransducerRecognizer {
         let stream = unsafe {
             let stream = sherpa_rs_sys::SherpaOnnxCreateOnlineStream(recognizer);
             if stream.is_null() {
-                unsafe { sherpa_rs_sys::SherpaOnnxDestroyOnlineRecognizer(recognizer) };
+                sherpa_rs_sys::SherpaOnnxDestroyOnlineRecognizer(recognizer);
                 bail!("SherpaOnnxCreateOnlineStream failed");
             }
             stream

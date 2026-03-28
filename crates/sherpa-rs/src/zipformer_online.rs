@@ -98,6 +98,7 @@ impl ZipFormerOnline {
                 tokens_buf: mem::zeroed(),
                 tokens_buf_size: mem::zeroed(),
                 nemo_ctc: mem::zeroed(),
+                ..mem::zeroed()
             }
         };
 

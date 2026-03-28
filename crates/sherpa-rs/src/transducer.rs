@@ -93,6 +93,7 @@ impl TransducerRecognizer {
                 dolphin: mem::zeroed::<_>(),
                 zipformer_ctc: mem::zeroed::<_>(),
                 canary: mem::zeroed::<_>(),
+                ..mem::zeroed::<_>()
             };
 
             let recognizer_config = sherpa_rs_sys::SherpaOnnxOfflineRecognizerConfig {

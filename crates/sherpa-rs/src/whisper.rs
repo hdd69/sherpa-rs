@@ -64,6 +64,7 @@ impl WhisperRecognizer {
             language: language_ptr.as_ptr(),
             task: task_ptr.as_ptr(),
             tail_paddings,
+            ..unsafe { mem::zeroed::<_>() }
         };
         let model_config = unsafe {
             sherpa_rs_sys::SherpaOnnxOfflineModelConfig {
@@ -88,6 +89,7 @@ impl WhisperRecognizer {
                 dolphin: mem::zeroed::<_>(),
                 zipformer_ctc: mem::zeroed::<_>(),
                 canary: mem::zeroed::<_>(),
+                ..mem::zeroed::<_>()
             }
         };
 

@@ -59,6 +59,7 @@ impl ZipFormer {
                 dolphin: mem::zeroed::<_>(),
                 zipformer_ctc: mem::zeroed::<_>(),
                 canary: mem::zeroed::<_>(),
+                ..mem::zeroed::<_>()
             }
         };
         // Recognizer config

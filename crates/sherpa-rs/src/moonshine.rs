@@ -65,6 +65,7 @@ impl MoonshineRecognizer {
                     encoder: encoder_ptr.as_ptr(),
                     uncached_decoder: uncached_decoder_ptr.as_ptr(),
                     cached_decoder: cached_decoder_ptr.as_ptr(),
+                    ..mem::zeroed::<_>()
                 },
                 tokens: tokens_ptr.as_ptr(),
                 provider: provider_ptr.as_ptr(),
@@ -83,6 +84,7 @@ impl MoonshineRecognizer {
                 sense_voice: mem::zeroed::<_>(),
                 zipformer_ctc: mem::zeroed(),
                 canary: mem::zeroed::<_>(),
+                ..mem::zeroed::<_>()
             }
         };
 
