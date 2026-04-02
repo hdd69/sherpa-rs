@@ -294,8 +294,8 @@ fn main() {
     // Prepare sherpa-onnx source
     if !sherpa_dst.exists() {
         debug_log!("Copy {} to {}", sherpa_src.display(), sherpa_dst.display());
-        delete_folder(&sherpa_src.join("scripts")).unwrap();
         copy_folder(&sherpa_src, &sherpa_dst);
+        delete_folder(&sherpa_dst.join("scripts")).unwrap();
     }
     // Speed up build
     env::set_var(

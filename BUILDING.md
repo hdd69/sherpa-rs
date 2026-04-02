@@ -53,9 +53,9 @@ Note: on Linux when linking statically you should set this env: `RUSTFLAGS="-C r
 <summary>macOS (arm64/x86-64)</summary>
 
 ```console
-wget https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.28/sherpa-onnx-v1.10.28-osx-universal2-static.tar.bz2
-tar xf sherpa-onnx-v1.10.28-osx-universal2-static.tar.bz2
-export SHERPA_LIB_PATH="$(pwd)/sherpa-onnx-v1.10.28-osx-universal2-static"
+wget https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.34/sherpa-onnx-v1.12.34-osx-universal2-static.tar.bz2
+tar xf sherpa-onnx-v1.12.34-osx-universal2-static.tar.bz2
+export SHERPA_LIB_PATH="$(pwd)/sherpa-onnx-v1.12.34-osx-universal2-static"
 cargo build
 ```
 
@@ -65,9 +65,9 @@ cargo build
 <summary>Windows (x86-64)</summary>
 
 ```console
-wget.exe https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.28/sherpa-onnx-v1.10.28-win-x64-static.tar.bz2
-tar.exe xf sherpa-onnx-v1.10.28-win-x64-static.tar.bz2
-$env:SHERPA_LIB_PATH="$pwd/sherpa-onnx-v1.10.28-win-x64-static"
+wget.exe https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.34/sherpa-onnx-v1.12.34-win-x64-static-MT-Release.tar.bz2
+tar.exe xf sherpa-onnx-v1.12.34-win-x64-static-MT-Release.tar.bz2
+$env:SHERPA_LIB_PATH="$pwd/sherpa-onnx-v1.12.34-win-x64-static-MT-Release"
 cargo build
 ```
 
@@ -77,9 +77,9 @@ cargo build
 <summary>Linux (x86-64)</summary>
 
 ```console
-wget https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.28/sherpa-onnx-v1.10.28-linux-x64-static.tar.bz2
-tar xf sherpa-onnx-v1.10.28-linux-x64-static.tar.bz2
-export SHERPA_LIB_PATH="$(pwd)/sherpa-onnx-v1.10.28-linux-x64-static"
+wget https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.34/sherpa-onnx-v1.12.34-linux-x64-static.tar.bz2
+tar xf sherpa-onnx-v1.12.34-linux-x64-static.tar.bz2
+export SHERPA_LIB_PATH="$(pwd)/sherpa-onnx-v1.12.34-linux-x64-static"
 export RUSTFLAGS="-C relocation-model=dynamic-no-pic"
 cargo build
 ```
@@ -118,8 +118,8 @@ copy target\debug\examples\transcribe.exe target\debug
 target\debug\transcribe.exe motivation.wav
 ```
 
-When building with cuda you should use cuda `11.x`
-In addition install `cudnn` with `sudo apt install nvidia-cudnn`
+When building with cuda you should use the matching `12.x` + `cudnn9` bundle for this release.
+On Linux, install a matching cuDNN 9 runtime before running GPU-linked binaries.
 
 </details>
 
